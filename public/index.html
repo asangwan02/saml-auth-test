@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAML Auth Test Frontend</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        background-color: #f9f9f9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      h1 {
+        color: #333;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 10px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #status {
+        margin-top: 20px;
+        font-size: 15px;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SAML Authentication Test</h1>
+    <button id="loginBtn">Login with SSO</button>
+    <button id="profileBtn">View Profile</button>
+    <button id="logoutBtn">Logout</button>
+
+    <div id="status"></div>
+
+    <script>
+      const backendBase = window.location.origin; // Works on Render
+
+      document.getElementById('loginBtn').addEventListener('click', () => {
+        window.location.href = `${backendBase}/login`;
+      });
+
+      document
+        .getElementById('profileBtn')
+        .addEventListener('click', async () => {
+          const res = await fetch(`${backendBase}/profile`, {
+            credentials: 'include'
+          });
+          const text = await res.text();
+          document.getElementById('status').innerHTML = text;
+        });
+
+      document
+        .getElementById('logoutBtn')
+        .addEventListener('click', async () => {
+          await fetch(`${backendBase}/logout`, { credentials: 'include' });
+          document.getElementById('status').innerText = '✅ Logged out.';
+        });
+    </script>
+  </body>
+</html>
