@@ -4,6 +4,8 @@ const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
 const SamlStrategy = require('passport-saml').Strategy;
+const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
 
 const {
   PORT = 3000,
@@ -15,6 +17,8 @@ const {
 } = process.env;
 
 const app = express();
+
+app.use(bodyParser.urlencoded({ extended: false }));
 
 // --- Middleware logging ---
 app.use((req, res, next) => {
@@ -78,29 +82,81 @@ app.get('/login', (req, res, next) => {
 // --- Assertion Consumer Service (ACS) ---
 app.post('/acs', (req, res, next) => {
   console.log('📥 Received POST /acs (SAML Response)');
+  console.log('🧾 Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('🧩 Checking request body...');
+
+  // In case body parsing fails
+  if (!req.body) {
+    console.error(
+      '❌ No body found in request — make sure body-parser is enabled!'
+    );
+    return res.status(400).json({ error: 'Missing request body' });
+  }
+
+  // Log the beginning of the SAMLResponse for inspection (safe truncation)
+  if (req.body.SAMLResponse) {
+    console.log(
+      '📦 Raw SAMLResponse (truncated):',
+      req.body.SAMLResponse.substring(0, 200) + '...'
+    );
+  } else {
+    console.error('⚠️  Missing SAMLResponse field in request body');
+  }
+
+  // Passport SAML verification
   passport.authenticate('saml', (err, user, info) => {
+    console.log('🔹 Inside passport.authenticate callback');
+
     if (err) {
       console.error('❌ SAML Error:', err);
-      return res
-        .status(500)
-        .send(`<h2>SAML Error</h2><pre>${err.message}</pre>`);
-    }
-    if (!user) {
-      console.error('⚠️  No user returned from SAML.');
-      return res
-        .status(401)
-        .send('<h2>Unauthorized: Invalid SAML response</h2>');
+      return res.status(500).json({
+        error: 'SAML processing failed',
+        details: err.message
+      });
     }
 
-    console.log('✅ User authenticated via SAML:', user.nameID);
-    req.login(user, (loginErr) => {
-      if (loginErr) {
-        console.error('❌ Session login failed:', loginErr);
-        return res.status(500).send('Internal server error after SAML login');
-      }
-      console.log('🔁 Redirecting to /profile');
-      res.redirect('/profile');
-    });
+    if (!user) {
+      console.error(
+        '⚠️  No user returned from SAML (check certificate, ACS URL, or NameID format)'
+      );
+      return res.status(401).json({
+        error: 'Unauthorized - invalid or missing SAML response'
+      });
+    }
+
+    console.log('✅ SAML Authenticated User:', user.nameID);
+    console.log('🧠 Full user object:', JSON.stringify(user, null, 2));
+
+    // Create internal JWT
+    try {
+      const tokenPayload = {
+        email: user.nameID,
+        attributes: user,
+        iat: Math.floor(Date.now() / 1000)
+      };
+
+      const token = jwt.sign(tokenPayload, 'process.env.INTERNAL_JWT_SECRET', {
+        expiresIn: '1h'
+      });
+
+      console.log('🎟️ JWT successfully created for:', user.nameID);
+      console.log('🔁 Sending JSON response to client');
+
+      return res.status(200).json({
+        message: 'SAML authentication successful',
+        user: {
+          email: user.nameID,
+          attributes: user
+        },
+        token
+      });
+    } catch (tokenErr) {
+      console.error('❌ JWT creation failed:', tokenErr);
+      return res.status(500).json({
+        error: 'Internal error while creating token',
+        details: tokenErr.message
+      });
+    }
   })(req, res, next);
 });
 
