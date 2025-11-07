@@ -1,36 +1,38 @@
 import os
-from dotenv import load_dotenv
 import base64
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
 
-# Load .env when local
+# --- Load .env when running locally ---
 if os.path.exists(".env"):
     load_dotenv()
     print("📦 Loaded .env file for local run")
 else:
-    print("🚀 Running in Render environment (no .env)")
+    print("🚀 Running in Render environment (no .env file)")
 
-# Load env
-SAML_ISSUER = os.getenv("SAML_ISSUER")
-SAML_CALLBACK_URL = os.getenv("SAML_CALLBACK_URL")
-SAML_ENTRY_POINT = os.getenv("SAML_ENTRY_POINT")
+# --- Load SAML Config from Environment ---
+SAML_SP_ENTITY_ID = os.getenv("SAML_SP_ENTITY_ID")
+SAML_SP_ASSERTION_CONSUMER_URL = os.getenv("SAML_SP_ASSERTION_CONSUMER_URL")
 SAML_IDP_ENTITY_ID = os.getenv("SAML_IDP_ENTITY_ID")
-SAML_IDP_CERT = os.getenv("SAML_IDP_CERT")
+SAML_IDP_SSO_URL = os.getenv("SAML_IDP_SSO_URL")
+SAML_IDP_CERT = (os.getenv("SAML_IDP_CERT") or "").replace("\\n", "\n").strip()
 
-app = FastAPI(title="Simple SAML SP")
-
-print("-------- SAML SP Configuration --------")
-print(f"SAML_ISSUER: {SAML_ISSUER}")
-print(f"SAML_CALLBACK_URL: {SAML_CALLBACK_URL}")
-print(f"SAML_ENTRY_POINT: {SAML_ENTRY_POINT}")
+# --- Log Config Summary ---
+print("-------- SAML CONFIGURATION --------")
+print(f"SAML_SP_ENTITY_ID: {SAML_SP_ENTITY_ID}")
+print(f"SAML_SP_ASSERTION_CONSUMER_URL: {SAML_SP_ASSERTION_CONSUMER_URL}")
 print(f"SAML_IDP_ENTITY_ID: {SAML_IDP_ENTITY_ID}")
+print(f"SAML_IDP_SSO_URL: {SAML_IDP_SSO_URL}")
 print(f"SAML_IDP_CERT: {'[SET]' if SAML_IDP_CERT else '[NOT SET]'}")
-print("---------------------------------------")
+print("------------------------------------")
 
-# --- Helper: Prepare FastAPI request for python3-saml
+# --- Initialize FastAPI ---
+app = FastAPI(title="Simple SAML Service Provider")
+
+# --- Prepare FastAPI Request for python3-saml ---
 def prepare_request(request: Request, post_data: dict = None):
     return {
         "https": "on" if request.url.scheme == "https" else "off",
@@ -41,23 +43,22 @@ def prepare_request(request: Request, post_data: dict = None):
         "post_data": post_data or {},
     }
 
-
-# --- Helper: Build dynamic SAML settings
+# --- Build SAML Settings Dynamically ---
 def build_saml_settings():
     return {
         "strict": True,
         "debug": True,
         "sp": {
-            "entityId": SAML_ISSUER,
+            "entityId": SAML_SP_ENTITY_ID,
             "assertionConsumerService": {
-                "url": SAML_CALLBACK_URL,
+                "url": SAML_SP_ASSERTION_CONSUMER_URL,
                 "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
             },
         },
         "idp": {
             "entityId": SAML_IDP_ENTITY_ID,
             "singleSignOnService": {
-                "url": SAML_ENTRY_POINT,
+                "url": SAML_IDP_SSO_URL,
                 "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
             },
             "x509cert": SAML_IDP_CERT,
@@ -73,8 +74,7 @@ def build_saml_settings():
         "nameIdFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
     }
 
-
-# --- Home page
+# --- Home Page ---
 @app.get("/", response_class=HTMLResponse)
 async def home():
     return """
@@ -84,17 +84,15 @@ async def home():
     <a href="/metadata">Download SP Metadata</a>
     """
 
-
-# --- SAML Login
+# --- SAML Login ---
 @app.get("/login")
 async def saml_login(request: Request):
     auth = OneLogin_Saml2_Auth(prepare_request(request), old_settings=build_saml_settings())
     redirect_url = auth.login()
-    print(f"Redirecting user to IdP: {redirect_url}")
+    print(f"🔁 Redirecting user to IdP: {redirect_url}")
     return RedirectResponse(redirect_url)
 
-
-# --- SAML Assertion Consumer Service (ACS)
+# --- Assertion Consumer Service (ACS) ---
 @app.post("/acs")
 async def saml_acs(request: Request):
     form = await request.form()
@@ -106,7 +104,7 @@ async def saml_acs(request: Request):
     errors = auth.get_errors()
 
     if errors:
-        print("SAML Errors:", errors)
+        print("❌ SAML Errors:", errors)
         raise HTTPException(status_code=400, detail=f"SAML processing failed: {errors}")
 
     if not auth.is_authenticated():
@@ -115,7 +113,7 @@ async def saml_acs(request: Request):
     email = auth.get_nameid() or "unknown"
     print(f"✅ Authenticated via SAML: {email}")
 
-    # Sample internal token (for demonstration)
+    # Generate example internal tokens (for testing only)
     fake_access_token = base64.b64encode(f"{email}:access".encode()).decode()
     fake_refresh_token = base64.b64encode(f"{email}:refresh".encode()).decode()
 
@@ -127,8 +125,7 @@ async def saml_acs(request: Request):
         "token_type": "bearer",
     })
 
-
-# --- SP Metadata endpoint
+# --- Metadata Endpoint ---
 @app.get("/metadata", response_class=HTMLResponse)
 async def saml_metadata():
     saml_settings = OneLogin_Saml2_Settings(build_saml_settings(), sp_validation_only=True)
@@ -138,8 +135,12 @@ async def saml_metadata():
         return HTMLResponse(f"<h2>Invalid metadata:</h2><pre>{errors}</pre>", status_code=500)
     return HTMLResponse(content=metadata, media_type="application/xml")
 
+# --- Optional Health Check ---
+@app.get("/health")
+async def health():
+    return {"status": "ok", "sp_entity": SAML_SP_ENTITY_ID, "idp_entity": SAML_IDP_ENTITY_ID}
 
-# --- Run server locally
+# --- Run Server Locally ---
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
