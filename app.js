@@ -80,7 +80,7 @@ app.get('/login', (req, res, next) => {
 });
 
 // --- Assertion Consumer Service (ACS) ---
-app.post('/acs', (req, res, next) => {
+app.post('/auth/login/saml/assertion', (req, res, next) => {
   console.log('📥 Received POST /acs (SAML Response)');
   console.log('🧾 Headers:', JSON.stringify(req.headers, null, 2));
   console.log('🧩 Checking request body...');
