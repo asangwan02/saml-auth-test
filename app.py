@@ -17,6 +17,7 @@ else:
 SAML_ISSUER = os.getenv("SAML_ISSUER")
 SAML_CALLBACK_URL = os.getenv("SAML_CALLBACK_URL")
 SAML_ENTRY_POINT = os.getenv("SAML_ENTRY_POINT")
+SAML_IDP_ENTITY_ID = os.getenv("SAML_IDP_ENTITY_ID")
 SAML_IDP_CERT = os.getenv("SAML_IDP_CERT")
 
 app = FastAPI(title="Simple SAML SP")
@@ -25,6 +26,7 @@ print("-------- SAML SP Configuration --------")
 print(f"SAML_ISSUER: {SAML_ISSUER}")
 print(f"SAML_CALLBACK_URL: {SAML_CALLBACK_URL}")
 print(f"SAML_ENTRY_POINT: {SAML_ENTRY_POINT}")
+print(f"SAML_IDP_ENTITY_ID: {SAML_IDP_ENTITY_ID}")
 print(f"SAML_IDP_CERT: {'[SET]' if SAML_IDP_CERT else '[NOT SET]'}")
 print("---------------------------------------")
 
@@ -53,7 +55,7 @@ def build_saml_settings():
             },
         },
         "idp": {
-            "entityId": SAML_ENTRY_POINT,
+            "entityId": SAML_IDP_ENTITY_ID,
             "singleSignOnService": {
                 "url": SAML_ENTRY_POINT,
                 "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
