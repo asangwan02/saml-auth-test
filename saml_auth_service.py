@@ -1,7 +1,6 @@
 import os
 from fastapi import HTTPException, status, Request
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
-import base64
 from test_service import test_service
 
 
@@ -55,15 +54,7 @@ class SamlAuthService:
         }
 
     def initiate_login(self, request: Request):
-        
-        print("-------- SAML CONFIGURATION --------")
-        print(f"SAML_SP_ENTITY_ID: {self.sp_entity_id}")
-        print(f"SAML_SP_ASSERTION_CONSUMER_URL: {self.acs_url}")
-        print(f"SAML_IDP_ENTITY_ID: {self.idp_entity_id}")
-        print(f"SAML_IDP_SSO_URL: {self.idp_sso_url}")
-        print(f"SAML_IDP_CERT: {'[SET]' if self.idp_cert else '[NOT SET]'}")
-        print("------------------------------------")
-
+        print("[SSO] Initiating SAML SSO Login")
         req_data = self._prepare_request(request)
         settings = self._build_saml_settings()
         auth = OneLogin_Saml2_Auth(req_data, old_settings=settings)
@@ -73,7 +64,7 @@ class SamlAuthService:
         return redirect_url
 
     async def process_assertion(self, request: Request):
-        print("📥 [ACS] Received POST /acs (SAML Response)")
+        print("[ACS] Received POST /acs (SAML Response)")
 
         form = await request.form()
         if "SAMLResponse" not in form:
