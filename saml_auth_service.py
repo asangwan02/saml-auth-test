@@ -113,6 +113,7 @@ class SamlAuthService:
             user_id=str(user["id"]), email=user["email"], auth_type="saml"
         )
 
+        print("SAML authentication successful")
         return {
             "access_token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
