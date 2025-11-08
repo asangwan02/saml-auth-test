@@ -16,8 +16,7 @@ class SamlAuthService:
         return {
             "https": "on" if request.url.scheme == "https" else "off",
             "http_host": request.headers.get("host", request.url.hostname),
-            "server_port": request.url.port
-            or (443 if request.url.scheme == "https" else 80),
+            "server_port": request.url.port or (443 if request.url.scheme == "https" else 80),
             "script_name": request.url.path,
             "get_data": dict(request.query_params),
             "post_data": post_data or {},
@@ -60,7 +59,7 @@ class SamlAuthService:
         auth = OneLogin_Saml2_Auth(req_data, old_settings=settings)
 
         redirect_url = auth.login()
-        print(f"Redirecting to IdP: {redirect_url}")
+        print(f"[SSO] Redirecting to IdP: {redirect_url}")
         return redirect_url
 
     async def process_assertion(self, request: Request):
@@ -70,7 +69,10 @@ class SamlAuthService:
         if "SAMLResponse" not in form:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing SAMLResponse in form data",
+                detail={
+                    "error": "Missing SAML response",
+                    "message": "SAML response not found in form data."
+                },
             )
 
         req_data = self._prepare_request(request, dict(form))
@@ -80,36 +82,60 @@ class SamlAuthService:
         errors = auth.get_errors()
 
         if errors:
-            print("SAML Errors:", errors)
+            print("[SAML] Processing errors:", errors)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"SAML processing failed: {errors}",
+                detail={
+                    "error": "SAML processing failed",
+                    "details": errors,
+                },
             )
 
         if not auth.is_authenticated():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="SAML authentication failed",
+                detail={
+                    "error": "SAML authentication failed",
+                    "message": "User could not be authenticated through the SAML response."
+                },
             )
 
         email = auth.get_nameid()
-        print(f"User Email: {email}")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "Invalid SAML response",
+                    "message": "NameID (email) not found in the SAML assertion."
+                },
+            )
+
         user = test_service.get_auth_user(email)
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "error": "Unauthorized user",
+                    "message": "User account not found in the application."
+                },
             )
 
         tokens = test_service.create_tokens(
-            user_id=str(user["id"]), email=user["email"], auth_type="saml"
+            user_id=str(user["id"]),
+            email=user["email"],
+            auth_type="saml"
         )
 
-        print("SAML authentication successful")
+        print("[SAML] Authentication successful")
         return {
             "access_token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
             "token_type": "bearer",
         }
+
+
+# --- Singleton instance
+saml_auth_service = SamlAuthService()
 
 
 # --- Singleton instance
