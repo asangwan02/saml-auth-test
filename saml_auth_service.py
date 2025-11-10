@@ -110,6 +110,8 @@ class SamlAuthService:
                 },
             )
 
+        print(f"[SAML] Authenticated user: {email}")
+
         user = test_service.get_auth_user(email)
         if not user:
             raise HTTPException(
