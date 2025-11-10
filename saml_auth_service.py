@@ -54,6 +54,16 @@ class SamlAuthService:
 
     def initiate_login(self, request: Request):
         print("[SSO] Initiating SAML SSO Login")
+        print("Request URL:", str(request.url))
+        print("scheme:", request.url.scheme)
+        print("x-forwarded-proto:", request.headers.get("x-forwarded-proto"))
+
+        print("env SAML_SP_ENTITY_ID:", self.sp_entity_id)
+        print("env SAML_IDP_SSO_URL:", self.idp_sso_url)
+        print("env SAML_IDP_ENTITY_ID:", self.idp_entity_id)
+        print("env SAML_SP_ASSERTION_CONSUMER_URL:", self.acs_url)
+        print("env SAML_IDP_CERT:", self.idp_cert[:30] + "...")
+
         req_data = self._prepare_request(request)
         settings = self._build_saml_settings()
         auth = OneLogin_Saml2_Auth(req_data, old_settings=settings)
@@ -64,6 +74,15 @@ class SamlAuthService:
 
     async def process_assertion(self, request: Request):
         print("[ACS] Received POST /acs (SAML Response)")
+        print("Request URL:", str(request.url))
+        print("scheme:", request.url.scheme)
+        print("x-forwarded-proto:", request.headers.get("x-forwarded-proto"))
+
+        print("env SAML_SP_ENTITY_ID:", self.sp_entity_id)
+        print("env SAML_IDP_SSO_URL:", self.idp_sso_url)
+        print("env SAML_IDP_ENTITY_ID:", self.idp_entity_id)
+        print("env SAML_SP_ASSERTION_CONSUMER_URL:", self.acs_url)
+        print("env SAML_IDP_CERT:", self.idp_cert[:30] + "...")
 
         form = await request.form()
         if "SAMLResponse" not in form:
@@ -100,8 +119,6 @@ class SamlAuthService:
                 },
             )
 
-        print("[SAML] User authenticated via SAML")
-
         email = auth.get_nameid()
         if not email:
             raise HTTPException(
@@ -112,8 +129,7 @@ class SamlAuthService:
                 },
             )
 
-        print(f"[SAML] Extracted user email: {email}")
-
+        print(f"[SAML] Authenticated user: {email}")
         user = test_service.get_auth_user(email)
         if not user:
             raise HTTPException(
