@@ -100,6 +100,8 @@ class SamlAuthService:
                 },
             )
 
+        print("[SAML] User authenticated via SAML")
+
         email = auth.get_nameid()
         if not email:
             raise HTTPException(
@@ -110,7 +112,7 @@ class SamlAuthService:
                 },
             )
 
-        print(f"[SAML] Authenticated user: {email}")
+        print(f"[SAML] Extracted user email: {email}")
 
         user = test_service.get_auth_user(email)
         if not user:
@@ -134,10 +136,6 @@ class SamlAuthService:
             "refresh_token": tokens["refresh_token"],
             "token_type": "bearer",
         }
-
-
-# --- Singleton instance
-saml_auth_service = SamlAuthService()
 
 
 # --- Singleton instance
