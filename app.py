@@ -21,7 +21,7 @@ async def home():
     return """
     <h1>SAML Authentication Test</h1>
     <p>Click below to log in using your SAML provider.</p>
-    <a href="/login"><button>Login with SAML</button></a><br><br>
+    <a href="https://ciathciaidevbeca01.thankfulisland-b0727d92.eastus2.azurecontainerapps.io/auth/login/saml"><button>Login with SAML</button></a><br><br>
     """
 
 # --- SAML Login ---
