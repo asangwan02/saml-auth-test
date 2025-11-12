@@ -119,6 +119,10 @@ class SamlAuthService:
                 },
             )
 
+        attributes = auth.get_attributes()
+        print("[SAML] SAML Attributes:", attributes)
+        print("[SAML] redirect_to:", auth.redirect_to())
+
         email = auth.get_nameid()
         if not email:
             raise HTTPException(
