@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from fastapi.responses import RedirectResponse
 
 # --- Load .env before imports using it ---
 if os.path.exists(".env"):
@@ -17,12 +18,41 @@ app = FastAPI(title="Simple SAML Service Provider")
 
 # --- Home Page ---
 @app.get("/", response_class=HTMLResponse)
-async def home():
-    return """
-    <h1>SAML Authentication Test</h1>
-    <p>Click below to log in using your SAML provider.</p>
-    <a href="/login"><button>Login with SAML</button></a><br><br>
-    """
+async def home(request: Request):
+    access_token = request.cookies.get("access_token")
+    refresh_token = request.cookies.get("refresh_token")
+
+    print("Access Token:", access_token)
+    print("Refresh Token:", refresh_token)
+
+    if access_token:
+        return """
+        <h1>Welcome Back!</h1>
+        <p>You’re already logged in (access token found).</p>
+        <a href="/logout"><button>Logout</button></a>
+        """
+    else:
+        return """
+        <h1>SAML Authentication Test</h1>
+        <p>Click below to log in using your SAML provider.</p>
+        <a href="/login"><button>Login with SAML</button></a><br><br>
+        """
+
+# @app.get("/", response_class=HTMLResponse)
+# async def home():
+#     return """
+#     <h1>SAML Authentication Test</h1>
+#     <p>Click below to log in using your SAML provider.</p>
+#     <a href="/login"><button>Login with SAML</button></a><br><br>
+#     <script>
+#       console.log("Cookies:", document.cookie);
+#       if (document.cookie.includes("access_token")) {
+#         document.body.insertAdjacentHTML('beforeend', "<p>You have an access token!</p>");
+#       } else {
+#         document.body.insertAdjacentHTML('beforeend', "<p>No access token found.</p>");
+#       }
+#     </script>
+#     """
 
 # --- SAML Login ---
 @app.get("/login")
