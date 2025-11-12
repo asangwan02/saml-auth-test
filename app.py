@@ -33,7 +33,29 @@ async def saml_login(request: Request):
 # --- Assertion Consumer Service (ACS) ---
 @app.post("/acs")
 async def saml_assertion(request: Request):
-    return await saml_auth_service.process_assertion(request)
+    tokens = await saml_auth_service.process_assertion(request)
+
+    redirect_url = "https://saml-auth-test.onrender.com/"
+    response = RedirectResponse(url=redirect_url, status_code=303)
+
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=True,
+        samesite="None",
+        max_age=3600
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=True,
+        samesite="None",
+        max_age=7 * 24 * 3600
+    )
+
+    return response
 
 @app.get("/health")
 async def health():
