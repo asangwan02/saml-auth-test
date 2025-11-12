@@ -38,21 +38,20 @@ async def home(request: Request):
         <a href="/login"><button>Login with SAML</button></a><br><br>
         """
 
-# @app.get("/", response_class=HTMLResponse)
-# async def home():
-#     return """
-#     <h1>SAML Authentication Test</h1>
-#     <p>Click below to log in using your SAML provider.</p>
-#     <a href="/login"><button>Login with SAML</button></a><br><br>
-#     <script>
-#       console.log("Cookies:", document.cookie);
-#       if (document.cookie.includes("access_token")) {
-#         document.body.insertAdjacentHTML('beforeend', "<p>You have an access token!</p>");
-#       } else {
-#         document.body.insertAdjacentHTML('beforeend', "<p>No access token found.</p>");
-#       }
-#     </script>
-#     """
+# --- Logout Route ---
+@app.get("/logout")
+async def logout():
+    """
+    Clears cookies and redirects to the home page.
+    """
+    response = RedirectResponse(url="/", status_code=303)
+
+    # Clear both tokens
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+
+    print("[Logout] Cleared cookies and redirected to home.")
+    return response
 
 # --- SAML Login ---
 @app.get("/login")
