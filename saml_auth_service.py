@@ -121,7 +121,13 @@ class SamlAuthService:
 
         attributes = auth.get_attributes()
         print("[SAML] SAML Attributes:", attributes)
-        print("[SAML] redirect_to:", auth.redirect_to())
+
+        print("[SAML] email:", auth.get_attribute("email"))
+        print("[SAML] Email:", auth.get_attribute("Email"))
+        print("[SAML] email address:", auth.get_attribute("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"))
+
+        relay_state = request.query_params.get("RelayState")
+        print("RelayState:", relay_state)
 
         email = auth.get_nameid()
         if not email:
