@@ -12,9 +12,9 @@ class TestService:
         return {"access_token": fake_access_token, "refresh_token": fake_refresh_token}
     
     def get_auth_user(self, email: str):
-        if email == self.test_user_email:
-            return {"email": email, "id": "3f9c60a5-353e-49bf-83b5-85f2a6073a0d"}
-        return None
+        # if email == self.test_user_email:
+        return {"email": email, "id": "3f9c60a5-353e-49bf-83b5-85f2a6073a0d"}
+        # return None
     
 # --- Singleton instance
 test_service = TestService()
