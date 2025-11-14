@@ -66,6 +66,7 @@ class SamlAuthService:
         # --- Check all attributes ---
         for key in email_keys:
             values = auth.get_attribute(key)
+            print(f"[SAML] Checking attribute '{key}':", values)
             if values and len(values) > 0:
                 email_candidate = values[0]
                 if "@" in email_candidate:
