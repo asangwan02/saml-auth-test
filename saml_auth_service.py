@@ -52,6 +52,29 @@ class SamlAuthService:
             "nameIdFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
         }
 
+    def _extract_email_from_saml(self, auth):
+        # --- Known SAML attribute keys for email ---
+        email_keys = [
+            "email",
+            "Email",
+            "mail",
+            "user.email",
+            "User.email",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+        ]
+
+        # --- Check all attributes ---
+        for key in email_keys:
+            values = auth.get_attribute(key)
+            if values and len(values) > 0:
+                email_candidate = values[0]
+                if "@" in email_candidate:
+                    return email_candidate
+
+        # --- Fallback: use NameID ---
+        nameid = auth.get_nameid()
+        return nameid
+    
     def initiate_login(self, request: Request):
         print("[SSO] Initiating SAML SSO Login")
         print("Request URL:", str(request.url))
@@ -129,7 +152,8 @@ class SamlAuthService:
         print("query_params:", request.query_params)
         print("body:", request.body)
 
-        email = auth.get_nameid()
+        email = self._extract_email_from_saml(auth)
+        print("[SAML] Extracted email:", email)
         if not email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
